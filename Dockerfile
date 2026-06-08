@@ -1,5 +1,9 @@
 FROM eclipse-temurin:21-jdk-alpine
+
 WORKDIR /app
+
+# Install curl for healthcheck
+RUN apk add --no-cache curl
 
 # Copy all project files
 COPY GoMoKuServer.java .
