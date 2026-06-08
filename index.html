@@ -247,8 +247,13 @@
             document.getElementById('start-screen').style.display = 'none';
             document.getElementById('game-container').style.display = 'flex';
 
-            const host = window.location.hostname || "127.0.0.1";
-            const wsUrl = `ws://${host}:8765`;
+                        const host = window.location.hostname || "127.0.0.1";
+            // For local dev: WebSocket on port 8001 (8000+1).
+            // For Coolify/cloud: use the same host but default to port 8001.
+            // Override by adding ?wsPort=XXXX to the URL.
+            const urlParams = new URLSearchParams(window.location.search);
+            const wsPort = urlParams.get('wsPort') || "8001";
+            const wsUrl = `ws://${host}:${wsPort}`;
             
             ws = new WebSocket(wsUrl);
 

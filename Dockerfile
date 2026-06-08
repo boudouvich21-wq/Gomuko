@@ -12,10 +12,10 @@ COPY whiteStone.gif .
 # Install dependencies
 RUN pip install --no-cache-dir websockets
 
-# Expose the WebSocket port (default 8765)
-EXPOSE 8765
+# Expose the HTTP port (default 8000)
+EXPOSE 8000
 
-# Start just the WebSocket server
-# The HTML files need to be served separately or via a separate HTTP server
+# Start the combined HTTP + WebSocket server
+# HTTP on PORT, WebSocket on PORT+1
 CMD python3 server.py
 

@@ -1,31 +1,39 @@
 import asyncio
 import json
 import websockets
-import socket
+import os
 
 games = {}
 waiting_client = None
 game_counter = 0
 
+MIME_TYPES = {
+    '.html': 'text/html',
+    '.gif': 'image/gif',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.css': 'text/css',
+    '.js': 'application/javascript',
+    '.ico': 'image/x-icon',
+    '.svg': 'image/svg+xml',
+}
+
 def check_win(board, player_val):
     for r in range(10):
         for c in range(10):
             if board[r][c] == player_val:
-                # Horizontal
                 if c <= 5 and all(board[r][c+i] == player_val for i in range(5)):
                     return True
-                # Vertical
                 if r <= 5 and all(board[r+i][c] == player_val for i in range(5)):
                     return True
-                # Diagonal right
                 if r <= 5 and c <= 5 and all(board[r+i][c+i] == player_val for i in range(5)):
                     return True
-                # Diagonal left
                 if r <= 5 and c >= 4 and all(board[r+i][c-i] == player_val for i in range(5)):
                     return True
     return False
 
-async def handler(websocket):
+async def ws_handler(websocket):
     global waiting_client, game_counter
 
     try:
@@ -95,7 +103,6 @@ async def handler(websocket):
 
             r, c = int(data['row']), int(data['col'])
 
-            # Validate move (ensure spot is empty)
             if game['board'][r][c] != 0:
                 await websocket.send(json.dumps({"type": "error", "msg": "Spot already taken!"}))
                 continue
@@ -141,18 +148,72 @@ async def handler(websocket):
                 except websockets.exceptions.ConnectionClosed:
                     pass
 
-async def main():
-    async with websockets.serve(handler, "0.0.0.0", 8765):
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+async def http_handler(reader, writer):
+    try:
+        request_line = await reader.readline()
+        if not request_line:
+            writer.close()
+            return
+        
+        while True:
+            header_line = await reader.readline()
+            if header_line == b'\r\n' or not header_line:
+                break
+        
         try:
-            s.connect(('8.8.8.8', 80))
-            local_ip = s.getsockname()[0]
-        except Exception:
-            local_ip = '127.0.0.1'
-        finally:
-            s.close()
-        print(f"GoMoKu Server running concurrently on ws://{local_ip}:8765")
-        await asyncio.Future()
+            method, path, _ = request_line.decode().split()
+        except:
+            writer.close()
+            return
+        
+        if path == '/':
+            path = '/index.html'
+        
+        filepath = '.' + path
+        
+        if os.path.exists(filepath) and os.path.isfile(filepath):
+            ext = os.path.splitext(filepath)[1].lower()
+            mime = MIME_TYPES.get(ext, 'application/octet-stream')
+            
+            with open(filepath, 'rb') as f:
+                body = f.read()
+            
+            response = (
+                f'HTTP/1.1 200 OK\r\n'
+                f'Content-Type: {mime}\r\n'
+                f'Content-Length: {len(body)}\r\n'
+                f'Access-Control-Allow-Origin: *\r\n'
+                f'\r\n'
+            ).encode() + body
+        else:
+            response = (
+                f'HTTP/1.1 404 Not Found\r\n'
+                f'Content-Type: text/plain\r\n'
+                f'Content-Length: 9\r\n'
+                f'\r\n'
+                f'Not Found'
+            ).encode()
+        
+        writer.write(response)
+        await writer.drain()
+    except:
+        pass
+    finally:
+        writer.close()
+
+async def main():
+    port = int(os.environ.get("PORT", 8000))
+    ws_port = port + 1
+    
+    print(f"Starting GoMoKu...")
+    print(f"  - Web UI:     http://0.0.0.0:{port}")
+    print(f"  - WebSocket:  ws://0.0.0.0:{ws_port}")
+    
+    http_server = await asyncio.start_server(http_handler, "0.0.0.0", port)
+    
+    async with websockets.serve(ws_handler, "0.0.0.0", ws_port):
+        async with http_server:
+            await asyncio.Future()
 
 if __name__ == "__main__":
     asyncio.run(main())
