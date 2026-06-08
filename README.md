@@ -32,6 +32,15 @@ Run the automated tests:
 ./venv/bin/python -m unittest discover -s tests -v
 ```
 
+After deploying, verify the public HTTP and WebSocket path with:
+
+```bash
+./venv/bin/python verify_deployment.py https://your-coolify-domain.example
+```
+
+This opens two WebSocket clients and verifies matchmaking, synchronized moves,
+and rejection of a consecutive move.
+
 ## Deploy on Coolify
 
 1. Create an application from this repository.
