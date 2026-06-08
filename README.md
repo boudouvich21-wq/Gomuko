@@ -10,16 +10,16 @@ Group project implementing the classic GoMoKu (Connect-5) game using Java client
 ┌─────────────┐      TCP Sockets       ┌──────────────┐
 │  Client 1   │ ◄─────────────────────► │              │
 │ (Java       │                         │   GoMoKu     │
-│  Applet)    │                         │   Server     │
+│  Swing GUI) │                         │   Server     │
 ├─────────────┤                         │              │
 │  Client 2   │ ◄─────────────────────► │  (Java)      │
 │ (Java       │                         │              │
-│  Applet)    │                         └──────────────┘
+│  Swing GUI) │                         └──────────────┘
 └─────────────┘
 ```
 
-- **Server**: Multi-threaded Java server supporting multiple concurrent game pairs using a thread pool.
-- **Client**: Java Applet with GUI using AWT, communicating with the server via stream sockets.
+- **Server**: Multi-threaded Java server supporting multiple concurrent game pairs using a thread pool. Also serves an HTTP health check endpoint for deployment monitoring.
+- **Client**: Standalone Java Swing application. Can also be run as a Java Applet (legacy).
 
 ## Protocol
 
@@ -41,30 +41,41 @@ Text-based protocol over TCP:
 
 | File | Description |
 |------|-------------|
-| `GoMoKuServer.java` | Game server - handles connections, manages games, validates moves |
-| `GoMoKuApplet.java` | Game client - Java Applet with GUI |
-| `index.html` | Web page to launch the applet |
+| `GoMoKuServer.java` | Game server + HTTP health endpoint |
+| `GoMoKuClient.java` | Standalone game client (Swing GUI) |
+| `GoMoKuApplet.java` | Java Applet client (legacy) |
+| `index.html` | Web page with download links |
+| `gomoku.jar` | Runnable JAR with all classes |
 | `background.gif` | Board background image |
 | `blackStone.gif` | Black stone image |
 | `whiteStone.gif` | White stone image |
 
 ## How to Run
 
-### 1. Compile
+### Prerequisites
+- Java 8 or later installed ([Download Java](https://java.com/download/))
+
+### Quick Start (Client)
 ```bash
-javac GoMoKuServer.java GoMoKuApplet.java
-jar cf gomoku.jar GoMoKuApplet.class GoMoKuServer*.class
+# Download the JAR and run:
+java -jar gomoku.jar
 ```
 
-### 2. Start the Server
+### Start the Server
 ```bash
-java GoMoKuServer [port]
-```
-Default port: 8765
+# Compile (if needed)
+javac GoMoKuServer.java
 
-### 3. Play
-- **Via Applet**: Open `index.html` in a browser (requires Java plugin)
-- **Via direct connection**: Two clients connect to the server IP and port
+# Run server (game on 8765, HTTP health on 8080)
+java GoMoKuServer 8765 8080
+```
+
+### Play
+1. Launch the client: `java -jar gomoku.jar`
+2. Enter the server address (e.g., `localhost` for local, or your deployed IP)
+3. Enter port `8765`, your name, and click "Enter Arena"
+4. Wait for a second player to join
+5. Click cells to place stones — get 5 in a row to win!
 
 ## Features
 
@@ -73,11 +84,14 @@ Default port: 8765
 - ✅ Win detection (5 in a row - horizontal, vertical, diagonal)
 - ✅ Invalid move handling (wrong turn, occupied spot)
 - ✅ Player disconnect handling
-- ✅ 10×10 game board with GIF images
+- ✅ Standalone Swing GUI (works in modern browsers/OS)
+- ✅ Runnable JAR for easy distribution
+- ✅ 10×10 game board with GIF stone images
 
-## URL
+## Deployed URL
 
-*[Your deployed URL here]*
+**Game Server:** `http://m13b03onwpt6zxzpilg8jyph.153.92.221.98.sslip.io:8080/`
+**Game Port:** `8765`
 
 ---
 

@@ -7,18 +7,19 @@ RUN apk add --no-cache curl
 
 # Copy all project files
 COPY GoMoKuServer.java .
+COPY GoMoKuClient.java .
 COPY GoMoKuApplet.java .
 COPY index.html .
+COPY manifest.txt .
 COPY background.gif .
 COPY blackStone.gif .
 COPY whiteStone.gif .
 
-# Compile Java files
-RUN javac GoMoKuServer.java GoMoKuApplet.java
+# Compile all Java files
+RUN javac GoMoKuServer.java GoMoKuClient.java GoMoKuApplet.java
 
-# Create JAR for the applet
-RUN jar cf gomoku.jar GoMoKuApplet.class GoMoKuServer*.class
-
+# Create JAR with manifest (runnable client)
+RUN jar cfm gomoku.jar manifest.txt GoMoKuClient.class GoMoKuClient\$BoardPanel.class GoMoKuApplet.class GoMoKuServer*.class
 # Expose ports
 EXPOSE 8765
 EXPOSE 8080

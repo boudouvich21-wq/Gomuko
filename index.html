@@ -31,10 +31,58 @@
             color: #94a3b8;
             margin-bottom: 20px;
         }
-        applet {
+        .download-section {
+            background: rgba(255, 255, 255, 0.03);
             border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 30px;
+            margin: 20px auto;
+            max-width: 500px;
+            backdrop-filter: blur(12px);
+        }
+        .download-section h2 {
+            font-size: 1.3rem;
+            color: #e2e8f0;
+            margin-top: 0;
+        }
+        .download-btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%);
+            color: white;
+            text-decoration: none;
+            padding: 14px 32px;
             border-radius: 12px;
-            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
+            font-weight: 600;
+            font-size: 1rem;
+            margin: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
+        }
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
+        }
+        .download-btn.secondary {
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: none;
+        }
+        .download-btn.secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: none;
+        }
+        .steps {
+            text-align: left;
+            color: #94a3b8;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            margin-top: 20px;
+        }
+        .steps code {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            color: #a5b4fc;
         }
         .note {
             margin-top: 20px;
@@ -45,16 +93,6 @@
         .note a {
             color: #818cf8;
         }
-        .warning {
-            background: rgba(255, 200, 0, 0.1);
-            border: 1px solid rgba(255, 200, 0, 0.3);
-            border-radius: 8px;
-            padding: 12px 20px;
-            margin-top: 15px;
-            font-size: 0.85rem;
-            color: #fbbf24;
-            max-width: 500px;
-        }
     </style>
 </head>
 <body>
@@ -62,29 +100,33 @@
         <h1>GoMoKu</h1>
         <p class="info">Connect-5 Game — Two players, one black and one white.</p>
         
-        <div id="applet-container">
-            <applet code="GoMoKuApplet.class" 
-                    archive="gomoku.jar"
-                    width="500" 
-                    height="650">
-                <param name="server" value="">
-                <param name="port" value="8765">
-                Your browser does not support Java applets.
-            </applet>
-        </div>
-        
-        <div class="warning">
-            <strong>⚠️ Note:</strong> Java Applets are deprecated in modern browsers (removed in 2018). 
-            <br>Use the <strong>Java Applet Runner</strong> browser extension or an older browser.
-            <br>Alternatively, see the <a href="https://github.com/boudouvich21-wq/Gomuko" style="color:#818cf8;">GitHub repo</a> for a standalone Java client launcher.
+        <div class="download-section">
+            <h2>🎮 Download & Play</h2>
+            <p style="color:#94a3b8; font-size:0.9rem;">
+                Download the standalone Java client (requires Java 8+ installed)
+            </p>
+            <p>
+                <a href="gomoku.jar" class="download-btn">⬇ Download gomoku.jar</a>
+            </p>
+            
+            <div class="steps">
+                <strong>How to run:</strong><br>
+                1. Make sure <a href="https://java.com/download/" style="color:#818cf8;">Java</a> is installed<br>
+                2. Download the JAR file above<br>
+                3. Open a terminal / command prompt in the download folder<br>
+                4. Run: <code>java -jar gomoku.jar</code><br><br>
+                <strong>Server address:</strong> <code>m13b03onwpt6zxzpilg8jyph.153.92.221.98.sslip.io</code><br>
+                <strong>Port:</strong> <code>8765</code>
+            </div>
         </div>
         
         <p class="note">
-            <strong>Instructions:</strong><br>
-            1. Enter your name and click "Enter Arena"<br>
-            2. Wait for an opponent to join<br>
+            <strong>How to play:</strong><br>
+            1. Launch the client, enter the server address and your name<br>
+            2. Click "Enter Arena" and wait for an opponent<br>
             3. Click a cell to place your stone<br>
-            4. Get 5 in a row (horizontal, vertical, or diagonal) to win!
+            4. Get 5 in a row (horizontal, vertical, or diagonal) to win!<br><br>
+            Open two instances on the same machine for local testing, or play with a friend remotely!
         </p>
     </div>
 </body>
