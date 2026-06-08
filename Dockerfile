@@ -13,10 +13,10 @@ COPY background.gif .
 COPY blackStone.gif .
 COPY whiteStone.gif .
 
-# Expose the HTTP port (Coolify will healthcheck this)
+# Expose ports
 EXPOSE 8080
+EXPOSE 8081
 
-# Start the server
-# HTTP on PORT (8080), WebSocket on PORT+1 (8081)
+# Start the server (HTTP on PORT=8080, WebSocket on PORT+1=8081)
 CMD python3 server.py
 

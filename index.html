@@ -7,9 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,700;1,400&display=swap" rel="stylesheet">
-    
     <style>
-        
         body { 
             font-family: 'Plus Jakarta Sans', sans-serif; 
             display: flex; 
@@ -22,7 +20,6 @@
             color: #f8fafc;
             overflow-x: hidden;
         }
-        
         #start-screen { 
             display: flex; 
             flex-direction: column; 
@@ -35,7 +32,6 @@
             border-radius: 24px;
             box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
             width: 320px;
-            transition: all 0.4s ease;
         }
         #start-screen h2 { 
             font-family: 'Playfair Display', serif;
@@ -80,14 +76,12 @@
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
         }
-
         #game-container { 
             display: none; 
             flex-direction: column; 
             align-items: center; 
             animation: fadeIn 0.6s ease forwards;
         }
-        
         table.header { 
             width: 450px; 
             border-collapse: separate; 
@@ -115,13 +109,6 @@
             font-size: 1.05rem;
             color: #f1f5f9;
         }
-        
-        #p1_label[style*="color: blue"], 
-        #p2_label[style*="color: blue"] {
-            color: #818cf8 !important;
-            font-weight: bold;
-        }
-
         .status-row { 
             font-weight: 600; 
             font-size: 0.85rem !important;
@@ -133,7 +120,6 @@
             border-top: 1px solid rgba(255, 255, 255, 0.06);
             vertical-align: middle;
         }
-
         #board {
             display: grid;
             grid-template-columns: repeat(10, 45px);
@@ -146,7 +132,6 @@
             box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), 0 0 0 8px #181d26;
             overflow: hidden;
         }
-        
         .cell {
             border: 1px solid rgba(0, 0, 0, 0.15); 
             width: 45px; 
@@ -161,7 +146,6 @@
         .cell:hover {
             background-color: rgba(255, 255, 255, 0.12); 
         }
-        
         .stone { 
             width: 39px; 
             height: 39px; 
@@ -171,7 +155,6 @@
         }
         .black { background-image: url('blackStone.gif'); background-size: cover; }
         .white { background-image: url('whiteStone.gif'); background-size: cover; }
-
         @keyframes dropStone {
             0% { transform: scale(1.4); opacity: 0; }
             100% { transform: scale(1); opacity: 1; }
@@ -208,16 +191,13 @@
     </div>
 
     <script>
-        
         const boardDiv = document.getElementById('board');
         const statusDiv = document.getElementById('status');
         const p1NameDiv = document.getElementById('p1_name');
         const p2NameDiv = document.getElementById('p2_name');
-        
         let myColor = null;
         let ws = null;
 
-        
         for (let r = 0; r < 10; r++) {
             for (let c = 0; c < 10; c++) {
                 let cell = document.createElement('div');
@@ -239,17 +219,20 @@
             document.getElementById('start-screen').style.display = 'none';
             document.getElementById('game-container').style.display = 'flex';
 
-            const host = window.location.hostname || "127.0.0.1";
-            // WebSocket is on port PORT+1 (e.g., if page on 8080, WS on 8081)
-            const currentPort = window.location.port || "8080";
-            const wsPort = parseInt(currentPort) + 1;
+            // IMPORTANT: WebSocket connects to PORT+1 of the HTTP page
+            const host = window.location.hostname;
+            const httpPort = window.location.port || "8080";
+            const wsPort = parseInt(httpPort) + 1;
             const wsUrl = `ws://${host}:${wsPort}`;
             
-            console.log("Connecting to WebSocket:", wsUrl);
+            console.log("Connecting WebSocket to:", wsUrl);
+            statusDiv.innerText = "Connecting to game server...";
             
             ws = new WebSocket(wsUrl);
 
             ws.onopen = function() {
+                console.log("Connected!");
+                statusDiv.innerText = "Connected! Sending join request...";
                 ws.send(JSON.stringify({ type: 'join', name: nameInput }));
             };
 
@@ -265,9 +248,11 @@
                     
                     if (myColor === 'black') {
                         document.getElementById('p1_label').style.color = 'blue';
+                        document.getElementById('p1_label').style.fontWeight = 'bold';
                         p1NameDiv.style.fontWeight = 'bold';
                     } else {
                         document.getElementById('p2_label').style.color = 'blue';
+                        document.getElementById('p2_label').style.fontWeight = 'bold';
                         p2NameDiv.style.fontWeight = 'bold';
                     }
                 } 
@@ -285,11 +270,15 @@
 
             ws.onerror = function(err) {
                 console.error("WebSocket error:", err);
-                alert("Connection error. Could not connect to WebSocket on " + wsUrl);
+                statusDiv.innerText = "Connection failed! Check if server is running.";
+                alert("Could not connect to game server.\n\nMake sure the server is running and port " + wsPort + " is accessible.");
             };
             
             ws.onclose = function() {
                 console.log("WebSocket closed");
+                if (statusDiv.innerText === "Connecting to game server...") {
+                    statusDiv.innerText = "Connection closed (server might be down)";
+                }
             };
         }
 

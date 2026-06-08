@@ -2,7 +2,6 @@ import asyncio
 import json
 import websockets
 import os
-import mimetypes
 
 games = {}
 waiting_client = None
@@ -137,24 +136,17 @@ async def ws_handler(websocket):
                 except websockets.exceptions.ConnectionClosed:
                     pass
 
-async def http_handler(reader, writer):
-    """Serve static files over HTTP (for browser)."""
+
+async def handle_http(reader, writer):
+    """Simple HTTP handler to serve static files."""
     try:
-        request_line = await reader.readline()
-        if not request_line:
+        request = (await reader.read(4096)).decode('utf-8', errors='replace')
+        if not request:
             writer.close()
             return
         
-        while True:
-            header_line = await reader.readline()
-            if header_line == b'\r\n' or not header_line:
-                break
-        
-        try:
-            method, path, _ = request_line.decode().split()
-        except:
-            writer.close()
-            return
+        first_line = request.split('\r\n')[0]
+        path = first_line.split(' ')[1] if ' ' in first_line else '/'
         
         if path == '/':
             path = '/index.html'
@@ -162,19 +154,24 @@ async def http_handler(reader, writer):
         filepath = '.' + path
         
         if os.path.exists(filepath) and os.path.isfile(filepath):
-            _, ext = os.path.splitext(filepath)
-            mime_type, _ = mimetypes.guess_type(filepath)
-            if mime_type is None:
-                mime_type = 'application/octet-stream'
-            
             with open(filepath, 'rb') as f:
                 body = f.read()
             
+            ext_map = {
+                '.html': 'text/html',
+                '.gif': 'image/gif',
+                '.png': 'image/png',
+                '.jpg': 'image/jpeg',
+                '.css': 'text/css',
+                '.js': 'application/javascript',
+            }
+            _, ext = os.path.splitext(filepath)
+            content_type = ext_map.get(ext.lower(), 'application/octet-stream')
+            
             response = (
                 f'HTTP/1.1 200 OK\r\n'
-                f'Content-Type: {mime_type}\r\n'
+                f'Content-Type: {content_type}\r\n'
                 f'Content-Length: {len(body)}\r\n'
-                f'Access-Control-Allow-Origin: *\r\n'
                 f'Connection: close\r\n'
                 f'\r\n'
             ).encode() + body
@@ -193,26 +190,31 @@ async def http_handler(reader, writer):
     except Exception:
         pass
     finally:
-        writer.close()
+        try:
+            writer.close()
+        except:
+            pass
+
 
 async def main():
-    port = int(os.environ.get("PORT", 8080))
-    
-    # HTTP on PORT, WebSocket on PORT+1
-    ws_port = port + 1
+    http_port = int(os.environ.get("PORT", 8080))
+    ws_port = http_port + 1  # WebSocket on next port
     
     print(f"GoMoKu Server starting...")
-    print(f"  - Web UI:     http://0.0.0.0:{port}")
-    print(f"  - WebSocket:  ws://0.0.0.0:{ws_port}")
+    print(f"  HTTP:      http://0.0.0.0:{http_port}")
+    print(f"  WebSocket: ws://0.0.0.0:{ws_port}")
     
     # Start HTTP server
-    http_server = await asyncio.start_server(http_handler, "0.0.0.0", port)
+    http_server = await asyncio.start_server(handle_http, "0.0.0.0", http_port)
     
     # Start WebSocket server
-    async with websockets.serve(ws_handler, "0.0.0.0", ws_port):
-        async with http_server:
-            print(f"Server ready! Open http://0.0.0.0:{port} in your browser")
-            await asyncio.Future()
+    ws_server = await websockets.serve(ws_handler, "0.0.0.0", ws_port)
+    
+    print(f"Server ready!")
+    print(f"  Open http://0.0.0.0:{http_port} in your browser")
+    
+    async with http_server, ws_server:
+        await asyncio.Future()
 
 if __name__ == "__main__":
     asyncio.run(main())
