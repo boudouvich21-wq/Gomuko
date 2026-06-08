@@ -1,133 +1,316 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>GoMoKu (Connect-5) Game</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GoMoKu - Connect-5</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,700;1,400&display=swap" rel="stylesheet">
+    
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+        
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
             justify-content: center;
             min-height: 100vh;
-            margin: 0;
-            background: radial-gradient(circle at center, #1f2633 0%, #0d1117 100%);
+            margin: 0; 
+            background: radial-gradient(circle at center, #1f2633 0%, #0d1117 100%); 
             color: #f8fafc;
+            overflow-x: hidden;
         }
-        .container {
-            text-align: center;
-            padding: 20px;
+        
+        #start-screen { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            gap: 20px; 
+            padding: 50px 40px; 
+            border: 1px solid rgba(255, 255, 255, 0.08); 
+            background: rgba(255, 255, 255, 0.03); 
+            backdrop-filter: blur(16px);
+            border-radius: 24px;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            width: 320px;
+            transition: all 0.4s ease;
         }
-        h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
+        #start-screen h2 { 
+            font-family: 'Playfair Display', serif;
+            font-size: 2.4rem;
+            margin: 0 0 10px 0;
             background: linear-gradient(135deg, #ffffff 30%, #a5b4fc 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            background-clip: text;
+            letter-spacing: -0.5px;
         }
-        .info {
-            color: #94a3b8;
-            margin-bottom: 20px;
-        }
-        .download-section {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 16px;
-            padding: 30px;
-            margin: 20px auto;
-            max-width: 500px;
-            backdrop-filter: blur(12px);
-        }
-        .download-section h2 {
-            font-size: 1.3rem;
-            color: #e2e8f0;
-            margin-top: 0;
-        }
-        .download-btn {
-            display: inline-block;
-            background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%);
-            color: white;
-            text-decoration: none;
-            padding: 14px 32px;
+        #start-screen input { 
+            padding: 14px; 
+            font-size: 16px; 
+            width: 100%; 
+            box-sizing: border-box;
+            text-align: center; 
+            border: 1px solid rgba(255, 255, 255, 0.15); 
+            background: rgba(0, 0, 0, 0.2);
+            color: #fff;
             border-radius: 12px;
-            font-weight: 600;
-            font-size: 1rem;
-            margin: 8px;
+            outline: none;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
         }
-        .download-btn:hover {
+        #start-screen input:focus {
+            border-color: #c4b5fd;
+            box-shadow: 0 0 0 4px rgba(196, 181, 253, 0.15);
+        }
+        #start-screen button { 
+            padding: 14px 28px; 
+            font-size: 16px; 
+            font-weight: 600;
+            width: 100%;
+            cursor: pointer; 
+            background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%); 
+            color: white; 
+            border: none; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
+            transition: all 0.3s ease;
+        }
+        #start-screen button:hover {
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
         }
-        .download-btn.secondary {
-            background: rgba(255, 255, 255, 0.08);
-            box-shadow: none;
+
+        #game-container { 
+            display: none; 
+            flex-direction: column; 
+            align-items: center; 
+            animation: fadeIn 0.6s ease forwards;
         }
-        .download-btn.secondary:hover {
-            background: rgba(255, 255, 255, 0.15);
-            box-shadow: none;
+        
+        table.header { 
+            width: 450px; 
+            border-collapse: separate; 
+            border-spacing: 0;
+            border: 1px solid rgba(255, 255, 255, 0.06); 
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(12px);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+            margin-bottom: 30px;
         }
-        .steps {
-            text-align: left;
+        table.header th {
+            font-weight: 500;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
             color: #94a3b8;
-            font-size: 0.85rem;
-            line-height: 1.6;
-            margin-top: 20px;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 12px 10px 4px 10px;
         }
-        .steps code {
-            background: rgba(0, 0, 0, 0.3);
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            color: #a5b4fc;
+        table.header td { 
+            padding: 4px 10px 14px 10px; 
+            text-align: center; 
+            font-size: 1.05rem;
+            color: #f1f5f9;
         }
-        .note {
-            margin-top: 20px;
-            font-size: 0.85rem;
-            color: #64748b;
-            max-width: 500px;
+        
+        #p1_label[style*="color: blue"], 
+        #p2_label[style*="color: blue"] {
+            color: #818cf8 !important;
+            font-weight: bold;
         }
-        .note a {
-            color: #818cf8;
+
+        .status-row { 
+            font-weight: 600; 
+            font-size: 0.85rem !important;
+            letter-spacing: 0.5px;
+            height: 38px; 
+            padding: 0 !important;
+            background-color: rgba(255, 255, 255, 0.04); 
+            color: #38bdf8;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            vertical-align: middle;
+        }
+
+        #board {
+            display: grid;
+            grid-template-columns: repeat(10, 45px);
+            grid-template-rows: repeat(10, 45px);
+            width: 450px; 
+            height: 450px;
+            border-radius: 12px; 
+            background-image: url('background.gif'); 
+            background-size: cover;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), 0 0 0 8px #181d26;
+            overflow: hidden;
+        }
+        
+        .cell {
+            border: 1px solid rgba(0, 0, 0, 0.15); 
+            width: 45px; 
+            height: 45px;
+            box-sizing: border-box; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        .cell:hover {
+            background-color: rgba(255, 255, 255, 0.12); 
+        }
+        
+        .stone { 
+            width: 39px; 
+            height: 39px; 
+            border-radius: 50%; 
+            filter: drop-shadow(3px 5px 5px rgba(0, 0, 0, 0.45));
+            animation: dropStone 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        .black { background-image: url('blackStone.gif'); background-size: cover; }
+        .white { background-image: url('whiteStone.gif'); background-size: cover; }
+
+        @keyframes dropStone {
+            0% { transform: scale(1.4); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>GoMoKu</h1>
-        <p class="info">Connect-5 Game — Two players, one black and one white.</p>
-        
-        <div class="download-section">
-            <h2>🎮 Download & Play</h2>
-            <p style="color:#94a3b8; font-size:0.9rem;">
-                Download the standalone Java client (requires Java 8+ installed)
-            </p>
-            <p>
-                <a href="gomoku.jar" class="download-btn">⬇ Download gomoku.jar</a>
-            </p>
-            
-            <div class="steps">
-                <strong>How to run:</strong><br>
-                1. Make sure <a href="https://java.com/download/" style="color:#818cf8;">Java</a> is installed<br>
-                2. Download the JAR file above<br>
-                3. Open a terminal / command prompt in the download folder<br>
-                4. Run: <code>java -jar gomoku.jar</code><br><br>
-                <strong>Server address:</strong> <code>m13b03onwpt6zxzpilg8jyph.153.92.221.98.sslip.io</code><br>
-                <strong>Port:</strong> <code>8765</code>
-            </div>
-        </div>
-        
-        <p class="note">
-            <strong>How to play:</strong><br>
-            1. Launch the client, enter the server address and your name<br>
-            2. Click "Enter Arena" and wait for an opponent<br>
-            3. Click a cell to place your stone<br>
-            4. Get 5 in a row (horizontal, vertical, or diagonal) to win!<br><br>
-            Open two instances on the same machine for local testing, or play with a friend remotely!
-        </p>
+
+    <div id="start-screen">
+        <h2>GoMoKu</h2>
+        <input type="text" id="player-name" placeholder="Enter Your Name" value="" />
+        <button onclick="startGame()">Enter Arena</button>
     </div>
+
+    <div id="game-container">
+        <table class="header">
+            <tr>
+                <th id="p1_label">Player 1 (Black)</th>
+                <th id="p2_label">Player 2 (White)</th>
+            </tr>
+            <tr>
+                <td id="p1_name">Waiting...</td>
+                <td id="p2_name">Waiting...</td>
+            </tr>
+            <tr>
+                <td colspan="2" id="status" class="status-row">Connecting to server...</td>
+            </tr>
+        </table>
+        <div id="board"></div>
+    </div>
+
+    <script>
+        
+        const boardDiv = document.getElementById('board');
+        const statusDiv = document.getElementById('status');
+        const p1NameDiv = document.getElementById('p1_name');
+        const p2NameDiv = document.getElementById('p2_name');
+        
+        let myColor = null;
+        let ws = null;
+
+        
+        for (let r = 0; r < 10; r++) {
+            for (let c = 0; c < 10; c++) {
+                let cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.dataset.row = r;
+                cell.dataset.col = c;
+                cell.onclick = () => makeMove(parseInt(r), parseInt(c));
+                boardDiv.appendChild(cell);
+            }
+        }
+
+        function startGame() {
+            const nameInput = document.getElementById('player-name').value.trim();
+            if (!nameInput) {
+                alert("Please enter your name.");
+                return;
+            }
+            
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('game-container').style.display = 'flex';
+
+            const host = window.location.hostname || "127.0.0.1";
+            // WebSocket is on port PORT+1 (e.g., if page on 8080, WS on 8081)
+            const currentPort = window.location.port || "8080";
+            const wsPort = parseInt(currentPort) + 1;
+            const wsUrl = `ws://${host}:${wsPort}`;
+            
+            console.log("Connecting to WebSocket:", wsUrl);
+            
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = function() {
+                ws.send(JSON.stringify({ type: 'join', name: nameInput }));
+            };
+
+            ws.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                console.log("Received:", data.type);
+                
+                if (data.type === 'init' || data.type === 'start') {
+                    myColor = data.color;
+                    p1NameDiv.innerText = data.names.black || "Waiting...";
+                    p2NameDiv.innerText = data.names.white || "Waiting...";
+                    statusDiv.innerText = data.msg;
+                    
+                    if (myColor === 'black') {
+                        document.getElementById('p1_label').style.color = 'blue';
+                        p1NameDiv.style.fontWeight = 'bold';
+                    } else {
+                        document.getElementById('p2_label').style.color = 'blue';
+                        p2NameDiv.style.fontWeight = 'bold';
+                    }
+                } 
+                else if (data.type === 'update_board' || data.type === 'win') {
+                    renderBoard(data.board);
+                    statusDiv.innerText = data.msg;
+                }
+                else if (data.type === 'error') {
+                    alert(data.msg);
+                    if (data.msg.includes("disconnected")) {
+                        location.reload(); 
+                    }
+                }
+            };
+
+            ws.onerror = function(err) {
+                console.error("WebSocket error:", err);
+                alert("Connection error. Could not connect to WebSocket on " + wsUrl);
+            };
+            
+            ws.onclose = function() {
+                console.log("WebSocket closed");
+            };
+        }
+
+        function makeMove(r, c) {
+            if (!myColor || !ws || ws.readyState !== WebSocket.OPEN) return;
+            ws.send(JSON.stringify({ type: 'move', row: r, col: c }));
+        }
+
+        function renderBoard(boardData) {
+            const cells = document.querySelectorAll('.cell');
+            cells.forEach(cell => {
+                const r = cell.dataset.row;
+                const c = cell.dataset.col;
+                cell.innerHTML = ''; 
+                if (boardData[r][c] === 1) {
+                    cell.innerHTML = '<div class="stone black"></div>';
+                } else if (boardData[r][c] === 2) {
+                    cell.innerHTML = '<div class="stone white"></div>';
+                }
+            });
+        }
+    </script>
 </body>
 </html>

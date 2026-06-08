@@ -1,29 +1,20 @@
-FROM eclipse-temurin:21-jdk-alpine
+FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install curl for healthcheck
-RUN apk add --no-cache curl
+# Install websockets library
+RUN pip install --no-cache-dir websockets
 
 # Copy all project files
-COPY GoMoKuServer.java .
-COPY GoMoKuClient.java .
-COPY GoMoKuApplet.java .
+COPY server.py .
 COPY index.html .
-COPY manifest.txt .
 COPY background.gif .
 COPY blackStone.gif .
 COPY whiteStone.gif .
 
-# Compile all Java files
-RUN javac GoMoKuServer.java GoMoKuClient.java GoMoKuApplet.java
-
-# Create JAR with manifest (runnable client)
-RUN jar cfm gomoku.jar manifest.txt GoMoKuClient.class GoMoKuClient\$BoardPanel.class GoMoKuApplet.class GoMoKuServer*.class
-# Expose ports
-EXPOSE 8765
+# Expose the HTTP port (Coolify will healthcheck this)
 EXPOSE 8080
 
-# Start the server (game on 8765, HTTP on 8080)
-CMD java GoMoKuServer 8765 8080
-
+# Start the server
+# HTTP on PORT (8080), WebSocket on PORT+1 (8081)
+CMD python3 server.py
