@@ -1,39 +1,84 @@
-# GoMoKu - 5-in-a-Row Game
+# GoMoKu (Connect-5) Game
 
-A real-time multiplayer Gomoku game with a combined HTTP + WebSocket server.
+**Distributed Systems Project**
 
-## 🚀 Deploy on Coolify (Single App ✓)
+Group project implementing the classic GoMoKu (Connect-5) game using Java client-server architecture over TCP stream sockets.
 
-The server now serves **both the HTML frontend AND WebSocket game server** in one process!
+## System Architecture
 
-1. In Coolify, create a **New Application**
-2. Connect your GitHub repo: `boudouvich21-wq/Gomuko`
-3. **Branch:** `main`
-4. **Build Pack:** **Dockerfile**
-5. **Port:** `8000`
-6. **Is it a static site?** ❌ **No**
-7. Click **Continue** and deploy
-
-### How it works
-
-- **HTTP (Web UI):** Runs on port `8000` (the PORT you set in Coolify)
-- **WebSocket:** Runs on port `8001` (PORT + 1)
-- The HTML client automatically connects to the WebSocket on port `8001`
-
-> Coolify will route HTTP traffic on port 80/443 to your app on port 8000.
-> The WebSocket connects on port 8001 — make sure your VPS firewall allows this port.
-
-## Local Development
-
-```bash
-# Install dependencies
-pip install websockets
-
-# Start the unified server
-python server.py
-
-# Open in browser
-open http://localhost:8000
+```
+┌─────────────┐      TCP Sockets       ┌──────────────┐
+│  Client 1   │ ◄─────────────────────► │              │
+│ (Java       │                         │   GoMoKu     │
+│  Applet)    │                         │   Server     │
+├─────────────┤                         │              │
+│  Client 2   │ ◄─────────────────────► │  (Java)      │
+│ (Java       │                         │              │
+│  Applet)    │                         └──────────────┘
+└─────────────┘
 ```
 
-Then open http://localhost:8000 in two browser tabs to play.
+- **Server**: Multi-threaded Java server supporting multiple concurrent game pairs using a thread pool.
+- **Client**: Java Applet with GUI using AWT, communicating with the server via stream sockets.
+
+## Protocol
+
+Text-based protocol over TCP:
+
+| Direction | Message | Description |
+|-----------|---------|-------------|
+| Client → Server | `JOIN:<name>` | Player joins the game |
+| Server → Client | `INIT:color:myName:opponentName` | First player, waiting for opponent |
+| Server → Client | `START:color:myName:opponentName` | Game started, both players ready |
+| Client → Server | `MOVE:row,col` | Player makes a move |
+| Server → Client | `UPDATE:row,col,color` | Broadcast move to both players |
+| Server → Client | `WIN:winnerName` | A player has won |
+| Server → Client | `ERROR:message` | Error notification |
+| Server → Client | `OPPONENT_DISCONNECTED:name` | Opponent left |
+| Client → Server | `QUIT` | Player disconnects |
+
+## Files
+
+| File | Description |
+|------|-------------|
+| `GoMoKuServer.java` | Game server - handles connections, manages games, validates moves |
+| `GoMoKuApplet.java` | Game client - Java Applet with GUI |
+| `index.html` | Web page to launch the applet |
+| `background.gif` | Board background image |
+| `blackStone.gif` | Black stone image |
+| `whiteStone.gif` | White stone image |
+
+## How to Run
+
+### 1. Compile
+```bash
+javac GoMoKuServer.java GoMoKuApplet.java
+jar cf gomoku.jar GoMoKuApplet.class GoMoKuServer*.class
+```
+
+### 2. Start the Server
+```bash
+java GoMoKuServer [port]
+```
+Default port: 8765
+
+### 3. Play
+- **Via Applet**: Open `index.html` in a browser (requires Java plugin)
+- **Via direct connection**: Two clients connect to the server IP and port
+
+## Features
+
+- ✅ Two-player gameplay (Black vs White)
+- ✅ Multiple concurrent game pairs supported
+- ✅ Win detection (5 in a row - horizontal, vertical, diagonal)
+- ✅ Invalid move handling (wrong turn, occupied spot)
+- ✅ Player disconnect handling
+- ✅ 10×10 game board with GIF images
+
+## URL
+
+*[Your deployed URL here]*
+
+---
+
+**Team Members**: [Your names/student numbers here]
