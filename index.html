@@ -62,21 +62,21 @@
         <h1>GoMoKu</h1>
         <p class="info">Connect-5 Game — Two players, one black and one white.</p>
         
-        <applet code="GoMoKuApplet.class" 
-                archive="gomoku.jar"
-                width="500" 
-                height="650">
-            <param name="server" value="">
-            <param name="port" value="8765">
-            Your browser does not support Java applets.
-            <br>
-            <a href="https://www.java.com/download/">Download Java</a> to play.
-        </applet>
+        <div id="applet-container">
+            <applet code="GoMoKuApplet.class" 
+                    archive="gomoku.jar"
+                    width="500" 
+                    height="650">
+                <param name="server" value="">
+                <param name="port" value="8765">
+                Your browser does not support Java applets.
+            </applet>
+        </div>
         
         <div class="warning">
-            <strong>⚠️ Note:</strong> Java Applets are deprecated in modern browsers. 
-            You may need to use an older browser or the 
-            <a href="https://www.java.com/download/" style="color:#818cf8;">Java Web Start</a> launcher.
+            <strong>⚠️ Note:</strong> Java Applets are deprecated in modern browsers (removed in 2018). 
+            <br>Use the <strong>Java Applet Runner</strong> browser extension or an older browser.
+            <br>Alternatively, see the <a href="https://github.com/boudouvich21-wq/Gomuko" style="color:#818cf8;">GitHub repo</a> for a standalone Java client launcher.
         </div>
         
         <p class="note">

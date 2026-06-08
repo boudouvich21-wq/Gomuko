@@ -7,41 +7,144 @@ import java.util.concurrent.*;
  * GoMoKu (Connect-5) Game Server
  * 
  * Supports multiple concurrent game pairs using thread pools.
- * Protocol: text-based over TCP streams.
- * - Client sends: "JOIN:<playerName>"
- * - Server responds: "INIT:<color>:<yourName>:<opponentName>" or
- *                     "START:<color>:<yourName>:<opponentName>"
- * - Client sends: "MOVE:<row>,<col>"
- * - Server broadcasts: "UPDATE:<row>,<col>,<color>" or 
- *                       "WIN:<winnerName>" or
- *                       "ERROR:<message>"
- * - Server sends: "OPPONENT_DISCONNECTED" on disconnect
+ * Also serves HTTP for health checks (on a separate thread).
  */
 
 public class GoMoKuServer {
-    // Shared game state
     private static final Map<Integer, GameRoom> games = new ConcurrentHashMap<>();
     private static int gameCounter = 0;
-    
-    // Waiting player
     private static PlayerData waitingPlayer = null;
     private static final Object waitLock = new Object();
-
-    // Board size
     private static final int SIZE = 10;
+    
+    private static int gamePort;
+    private static int httpPort;
 
     public static void main(String[] args) {
-        int port = 8765;
+        gamePort = 8765;
+        httpPort = 8080;
         if (args.length > 0) {
-            try { port = Integer.parseInt(args[0]); } catch (NumberFormatException e) {}
+            try { gamePort = Integer.parseInt(args[0]); } catch (NumberFormatException e) {}
+        }
+        if (args.length > 1) {
+            try { httpPort = Integer.parseInt(args[1]); } catch (NumberFormatException e) {}
         }
 
-        System.out.println("GoMoKu Server starting on port " + port + "...");
+        System.out.println("GoMoKu Server starting...");
+        System.out.println("  - Game server (TCP):  port " + gamePort);
+        System.out.println("  - HTTP health check:  port " + httpPort);
+        
+        // Start HTTP server on separate thread
+        new Thread(() -> startHttpServer()).start();
+        
+        // Start game server (main thread)
+        startGameServer();
+    }
 
-        try (ServerSocket serverSocket = new ServerSocket(port)) {
-            System.out.println("Server is running. Waiting for players...");
+    private static void startHttpServer() {
+        try (ServerSocket serverSocket = new ServerSocket(httpPort)) {
+            System.out.println("HTTP server listening on port " + httpPort);
+            ExecutorService threadPool = Executors.newCachedThreadPool();
+            while (true) {
+                Socket clientSocket = serverSocket.accept();
+                threadPool.execute(() -> handleHttpRequest(clientSocket));
+            }
+        } catch (IOException e) {
+            System.err.println("HTTP server error: " + e.getMessage());
+        }
+    }
+
+    static void handleHttpRequest(Socket socket) {
+        try {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            OutputStream out = socket.getOutputStream();
             
-            // Use thread pool to handle multiple clients
+            String requestLine = reader.readLine();
+            if (requestLine == null) {
+                socket.close();
+                return;
+            }
+            
+            String header;
+            while ((header = reader.readLine()) != null && !header.isEmpty()) {}
+            
+            String path = "/";
+            try {
+                String[] parts = requestLine.split(" ");
+                if (parts.length >= 2) {
+                    path = parts[1];
+                }
+            } catch (Exception e) {}
+            
+            if (path.equals("/")) {
+                path = "/index.html";
+            }
+            
+            String filename = path.startsWith("/") ? path.substring(1) : path;
+            
+            // MIME types
+            Map<String, String> mimeTypes = new HashMap<>();
+            mimeTypes.put("html", "text/html");
+            mimeTypes.put("jar", "application/java-archive");
+            mimeTypes.put("gif", "image/gif");
+            mimeTypes.put("png", "image/png");
+            mimeTypes.put("jpg", "image/jpeg");
+            mimeTypes.put("css", "text/css");
+            mimeTypes.put("js", "application/javascript");
+            mimeTypes.put("class", "application/java-vm");
+            
+            File file = new File(filename);
+            byte[] fileData = null;
+            String mimeType = "application/octet-stream";
+            
+            if (file.exists() && !file.isDirectory()) {
+                String ext = "";
+                int dotIndex = filename.lastIndexOf('.');
+                if (dotIndex > 0) {
+                    ext = filename.substring(dotIndex + 1).toLowerCase();
+                }
+                String mime = mimeTypes.get(ext);
+                if (mime != null) mimeType = mime;
+                
+                FileInputStream fis = new FileInputStream(file);
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                byte[] buffer = new byte[4096];
+                int bytesRead;
+                while ((bytesRead = fis.read(buffer)) != -1) {
+                    baos.write(buffer, 0, bytesRead);
+                }
+                fis.close();
+                fileData = baos.toByteArray();
+            }
+            
+            if (fileData != null) {
+                String response = "HTTP/1.1 200 OK\r\n" +
+                                "Content-Type: " + mimeType + "\r\n" +
+                                "Content-Length: " + fileData.length + "\r\n" +
+                                "Access-Control-Allow-Origin: *\r\n" +
+                                "\r\n";
+                out.write(response.getBytes());
+                out.write(fileData);
+            } else {
+                String body = "<html><body><h1>GoMoKu Server Running</h1>" +
+                             "<p>Game server on port " + gamePort + "</p></body></html>";
+                String response = "HTTP/1.1 200 OK\r\n" +
+                                "Content-Type: text/html\r\n" +
+                                "Content-Length: " + body.length() + "\r\n" +
+                                "\r\n" + body;
+                out.write(response.getBytes());
+            }
+            
+            out.flush();
+            socket.close();
+        } catch (Exception e) {
+            try { socket.close(); } catch (IOException ex) {}
+        }
+    }
+
+    private static void startGameServer() {
+        try (ServerSocket serverSocket = new ServerSocket(gamePort)) {
+            System.out.println("Game server listening on port " + gamePort);
             ExecutorService threadPool = Executors.newCachedThreadPool();
             
             while (true) {
@@ -49,7 +152,7 @@ public class GoMoKuServer {
                 threadPool.execute(new ClientHandler(clientSocket));
             }
         } catch (IOException e) {
-            System.err.println("Server error: " + e.getMessage());
+            System.err.println("Game server error: " + e.getMessage());
         }
     }
 
@@ -59,7 +162,6 @@ public class GoMoKuServer {
         for (int r = 0; r < SIZE; r++) {
             for (int c = 0; c < SIZE; c++) {
                 if (board[r][c] == playerVal) {
-                    // Horizontal
                     if (c <= SIZE - 5) {
                         boolean win = true;
                         for (int i = 1; i < 5; i++) {
@@ -67,7 +169,6 @@ public class GoMoKuServer {
                         }
                         if (win) return true;
                     }
-                    // Vertical
                     if (r <= SIZE - 5) {
                         boolean win = true;
                         for (int i = 1; i < 5; i++) {
@@ -75,7 +176,6 @@ public class GoMoKuServer {
                         }
                         if (win) return true;
                     }
-                    // Diagonal right-down
                     if (r <= SIZE - 5 && c <= SIZE - 5) {
                         boolean win = true;
                         for (int i = 1; i < 5; i++) {
@@ -83,7 +183,6 @@ public class GoMoKuServer {
                         }
                         if (win) return true;
                     }
-                    // Diagonal left-down
                     if (r <= SIZE - 5 && c >= 4) {
                         boolean win = true;
                         for (int i = 1; i < 5; i++) {
@@ -96,8 +195,6 @@ public class GoMoKuServer {
         }
         return false;
     }
-
-    // ===== DATA CLASSES =====
 
     static class PlayerData {
         Socket socket;
@@ -119,11 +216,9 @@ public class GoMoKuServer {
         PlayerData white;
         int[][] board = new int[SIZE][SIZE];
         volatile boolean active = false;
-        volatile String currentTurn = "black"; // black goes first
+        volatile String currentTurn = "black";
 
-        GameRoom(int id) {
-            this.id = id;
-        }
+        GameRoom(int id) { this.id = id; }
 
         synchronized boolean isValidMove(int row, int col, String color) {
             if (!active) return false;
@@ -136,7 +231,6 @@ public class GoMoKuServer {
         synchronized void makeMove(int row, int col, String color) {
             int val = color.equals("black") ? 1 : 2;
             board[row][col] = val;
-            // Switch turn
             currentTurn = color.equals("black") ? "white" : "black";
         }
 
@@ -154,14 +248,10 @@ public class GoMoKuServer {
         }
     }
 
-    // ===== CLIENT HANDLER =====
-
     static class ClientHandler implements Runnable {
         private final Socket socket;
 
-        ClientHandler(Socket socket) {
-            this.socket = socket;
-        }
+        ClientHandler(Socket socket) { this.socket = socket; }
 
         @Override
         public void run() {
@@ -184,10 +274,8 @@ public class GoMoKuServer {
                 myName = initLine.substring(5).trim();
                 System.out.println("Player '" + myName + "' joined from " + socket.getInetAddress());
 
-                // Match with waiting player or wait
                 synchronized (waitLock) {
                     if (waitingPlayer == null) {
-                        // First player - wait
                         waitingPlayer = player;
                         myColor = "black";
                         gameId = gameCounter++;
@@ -200,24 +288,17 @@ public class GoMoKuServer {
                         player.out.println("INIT:black:" + myName + ":Waiting for opponent...");
                         System.out.println("  -> Waiting for opponent. Game ID: " + gameId);
                         
-                        // Wait for opponent to join
-                        try {
-                            waitLock.wait();
-                        } catch (InterruptedException e) {
-                            return;
-                        }
+                        try { waitLock.wait(); }
+                        catch (InterruptedException e) { return; }
                         
-                        // Game is now active
                         game = games.get(gameId);
                         if (game != null && game.white != null) {
                             game.active = true;
-                            // Notify both players game has started
                             game.black.out.println("START:black:" + game.black.name + ":" + game.white.name);
                             game.white.out.println("START:white:" + game.white.name + ":" + game.black.name);
                             System.out.println("Game " + gameId + " started: " + game.black.name + " (black) vs " + game.white.name + " (white)");
                         }
                     } else {
-                        // Second player - start game
                         PlayerData firstPlayer = waitingPlayer;
                         waitingPlayer = null;
                         
@@ -226,12 +307,10 @@ public class GoMoKuServer {
                         game = games.get(gameId);
                         game.white = player;
                         
-                        // Signal the waiting player
                         waitLock.notify();
                     }
                 }
 
-                // ===== GAME LOOP =====
                 try {
                     String inputLine;
                     while ((inputLine = player.in.readLine()) != null) {
@@ -264,7 +343,6 @@ public class GoMoKuServer {
                                     game.getPlayer("white").out.println(winMsg);
                                     System.out.println("Game " + gameId + " - " + myName + " won!");
                                 } else {
-                                    // Broadcast move to both players
                                     String moveMsg = "UPDATE:" + row + "," + col + "," + myColor;
                                     game.getPlayer("black").out.println(moveMsg);
                                     game.getPlayer("white").out.println(moveMsg);
@@ -276,40 +354,30 @@ public class GoMoKuServer {
                             break;
                         }
                     }
-                } catch (IOException e) {
-                    // Client disconnected
-                }
+                } catch (IOException e) {}
 
             } catch (IOException e) {
                 System.err.println("Connection error: " + e.getMessage());
             } finally {
-                // Cleanup
                 if (game != null && game.active) {
                     game.active = false;
                     PlayerData opponent = game.getOpponent(myColor);
                     if (opponent != null) {
-                        try {
-                            opponent.out.println("OPPONENT_DISCONNECTED:" + myName);
-                        } catch (Exception e) {}
+                        try { opponent.out.println("OPPONENT_DISCONNECTED:" + myName); }
+                        catch (Exception e) {}
                     }
                     System.out.println("Game " + gameId + " ended - " + myName + " disconnected");
                 }
                 
-                // If this was the waiting player, clean up
                 synchronized (waitLock) {
                     if (waitingPlayer == player) {
                         waitingPlayer = null;
-                        waitLock.notify(); // Wake up in case someone is waiting
-                        if (game != null) {
-                            games.remove(gameId);
-                        }
+                        waitLock.notify();
+                        if (game != null) games.remove(gameId);
                     }
                 }
                 
-                try {
-                    socket.close();
-                } catch (IOException e) {}
-                
+                try { socket.close(); } catch (IOException e) {}
                 System.out.println("Player '" + myName + "' disconnected");
             }
         }

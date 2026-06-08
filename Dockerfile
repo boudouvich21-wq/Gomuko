@@ -2,7 +2,7 @@ FROM openjdk:21-slim
 
 WORKDIR /app
 
-# Copy Java source files
+# Copy all project files
 COPY GoMoKuServer.java .
 COPY GoMoKuApplet.java .
 COPY index.html .
@@ -16,8 +16,10 @@ RUN javac GoMoKuServer.java GoMoKuApplet.java
 # Create JAR for the applet
 RUN jar cf gomoku.jar GoMoKuApplet.class GoMoKuServer*.class
 
-# Expose the game server port
+# Expose ports
 EXPOSE 8765
+EXPOSE 8080
 
-# Start the game server
-CMD java GoMoKuServer 8765
+# Start the server (game on 8765, HTTP on 8080)
+CMD java GoMoKuServer 8765 8080
+
