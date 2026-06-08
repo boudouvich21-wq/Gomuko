@@ -53,6 +53,10 @@ and rejection of a consecutive move.
 Do not expose a second WebSocket port. HTTP and WebSocket traffic both pass
 through port `8080`, and Coolify upgrades requests to `/ws`.
 
+The Docker image includes `curl` because Coolify runs its health-check command
+inside the application container. Without `curl` or `wget`, Coolify marks the
+container unhealthy even when the Python server has started successfully.
+
 The application stores active matches in memory. A container restart ends
 current games, and multiple replicas would create separate matchmaking queues.
 
