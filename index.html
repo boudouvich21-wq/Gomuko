@@ -4,215 +4,614 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GoMoKu - Connect-5</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,700;1,400&display=swap" rel="stylesheet">
     <style>
-        body { 
-            font-family: 'Plus Jakarta Sans', sans-serif; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0; 
-            background: radial-gradient(circle at center, #1f2633 0%, #0d1117 100%); 
-            color: #f8fafc;
-            overflow-x: hidden;
+        :root {
+            --ink: #171916;
+            --ink-soft: #232820;
+            --paper: #fffaf0;
+            --panel: #f2eadc;
+            --muted: #6b675c;
+            --brass: #b78a31;
+            --brass-dark: #7d5b1c;
+            --green: #5f7257;
+            --green-dark: #32412e;
+            --danger: #9d3d36;
+            --success: #3e6b4b;
+            --board-base: #d3a84e;
+            --board-line: rgba(54, 37, 15, 0.48);
+            --shadow: 0 24px 80px rgba(0, 0, 0, 0.36);
+            --board-size: min(68vh, 620px, calc(100vw - 430px));
+            color-scheme: light;
         }
-        #start-screen { 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            gap: 20px; 
-            padding: 50px 40px; 
-            border: 1px solid rgba(255, 255, 255, 0.08); 
-            background: rgba(255, 255, 255, 0.03); 
-            backdrop-filter: blur(16px);
-            border-radius: 24px;
-            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-            width: 320px;
-        }
-        #start-screen h2 { 
-            font-family: 'Playfair Display', serif;
-            font-size: 2.4rem;
-            margin: 0 0 10px 0;
-            background: linear-gradient(135deg, #ffffff 30%, #a5b4fc 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            letter-spacing: -0.5px;
-        }
-        #start-screen input { 
-            padding: 14px; 
-            font-size: 16px; 
-            width: 100%; 
+
+        * {
             box-sizing: border-box;
-            text-align: center; 
-            border: 1px solid rgba(255, 255, 255, 0.15); 
-            background: rgba(0, 0, 0, 0.2);
-            color: #fff;
-            border-radius: 12px;
-            outline: none;
-            transition: all 0.3s ease;
         }
-        #start-screen input:focus {
-            border-color: #c4b5fd;
-            box-shadow: 0 0 0 4px rgba(196, 181, 253, 0.15);
-        }
-        #start-screen button { 
-            padding: 14px 28px; 
-            font-size: 16px; 
-            font-weight: 600;
-            width: 100%;
-            cursor: pointer; 
-            background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%); 
-            color: white; 
-            border: none; 
-            border-radius: 12px; 
-            box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
-            transition: all 0.3s ease;
-        }
-        #start-screen button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
-        }
-        #game-container { 
-            display: none; 
-            flex-direction: column; 
-            align-items: center; 
-            animation: fadeIn 0.6s ease forwards;
-        }
-        table.header { 
-            width: 450px; 
-            border-collapse: separate; 
-            border-spacing: 0;
-            border: 1px solid rgba(255, 255, 255, 0.06); 
-            background: rgba(255, 255, 255, 0.02);
-            backdrop-filter: blur(12px);
-            border-radius: 16px;
-            overflow: hidden;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
-            margin-bottom: 30px;
-        }
-        table.header th {
-            font-weight: 500;
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: #94a3b8;
-            background: rgba(255, 255, 255, 0.02);
-            padding: 12px 10px 4px 10px;
-        }
-        table.header td { 
-            padding: 4px 10px 14px 10px; 
-            text-align: center; 
-            font-size: 1.05rem;
-            color: #f1f5f9;
-        }
-        .status-row { 
-            font-weight: 600; 
-            font-size: 0.85rem !important;
-            letter-spacing: 0.5px;
-            height: 38px; 
-            padding: 0 !important;
-            background-color: rgba(255, 255, 255, 0.04); 
-            color: #38bdf8;
-            border-top: 1px solid rgba(255, 255, 255, 0.06);
-            vertical-align: middle;
-        }
-        #board {
-            display: grid;
-            grid-template-columns: repeat(10, 45px);
-            grid-template-rows: repeat(10, 45px);
-            width: 450px; 
-            height: 450px;
-            border-radius: 12px; 
-            background-image: url('background.gif'); 
-            background-size: cover;
-            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), 0 0 0 8px #181d26;
-            overflow: hidden;
-        }
-        .cell {
-            border: 1px solid rgba(0, 0, 0, 0.15); 
-            width: 45px; 
-            height: 45px;
-            box-sizing: border-box; 
-            display: flex; 
-            justify-content: center; 
+
+        body {
+            min-height: 100vh;
+            margin: 0;
+            padding: 32px;
+            display: flex;
             align-items: center;
+            justify-content: center;
+            overflow-x: hidden;
+            color: var(--paper);
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+                "Segoe UI", sans-serif;
+            background:
+                linear-gradient(135deg, rgba(255, 255, 255, 0.035), transparent 28%),
+                repeating-linear-gradient(
+                    90deg,
+                    rgba(255, 255, 255, 0.025) 0,
+                    rgba(255, 255, 255, 0.025) 1px,
+                    transparent 1px,
+                    transparent 96px
+                ),
+                var(--ink);
+        }
+
+        button,
+        input {
+            font: inherit;
+        }
+
+        button:focus-visible,
+        input:focus-visible {
+            outline: 3px solid rgba(183, 138, 49, 0.46);
+            outline-offset: 3px;
+        }
+
+        #start-screen {
+            width: min(420px, calc(100vw - 40px));
+            min-height: 430px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 18px;
+            padding: 34px;
+            color: var(--ink);
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 250, 240, 0.96)),
+                var(--paper);
+            border: 1px solid rgba(183, 138, 49, 0.28);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+        }
+
+        #start-screen::before {
+            content: "";
+            width: 72px;
+            height: 72px;
+            align-self: center;
+            margin-bottom: 6px;
+            border-radius: 50%;
+            background:
+                radial-gradient(circle at 33% 28%, rgba(255, 255, 255, 0.95), transparent 18%),
+                radial-gradient(circle at center, #10100d 0 54%, #2b2517 55% 64%, transparent 65%),
+                linear-gradient(135deg, var(--board-base), #e3bd67);
+            box-shadow:
+                inset 0 0 0 1px rgba(47, 34, 16, 0.18),
+                0 18px 36px rgba(23, 25, 22, 0.24);
+        }
+
+        #start-screen h2 {
+            margin: 0;
+            color: var(--ink);
+            font-family: Georgia, "Times New Roman", serif;
+            font-size: clamp(2.8rem, 10vw, 4.2rem);
+            line-height: 0.9;
+            text-align: center;
+            letter-spacing: 0;
+        }
+
+        #start-screen h2::after {
+            content: "Online Connect-5";
+            display: block;
+            margin-top: 12px;
+            color: var(--brass-dark);
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+                "Segoe UI", sans-serif;
+            font-size: 0.76rem;
+            font-weight: 800;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+        }
+
+        #start-screen input {
+            width: 100%;
+            height: 52px;
+            margin-top: 16px;
+            padding: 0 16px;
+            color: var(--ink);
+            text-align: center;
+            background: #fffdf8;
+            border: 1px solid rgba(50, 65, 46, 0.22);
+            border-radius: 6px;
+            box-shadow: inset 0 1px 2px rgba(23, 25, 22, 0.08);
+        }
+
+        #start-screen input::placeholder {
+            color: rgba(35, 40, 32, 0.54);
+        }
+
+        #start-screen button {
+            width: 100%;
+            min-height: 52px;
+            padding: 0 20px;
+            color: var(--paper);
+            font-weight: 800;
+            letter-spacing: 0.03em;
             cursor: pointer;
-            transition: background-color 0.2s ease;
+            background: linear-gradient(180deg, var(--green), var(--green-dark));
+            border: 1px solid rgba(19, 27, 17, 0.34);
+            border-radius: 6px;
+            box-shadow: 0 12px 24px rgba(50, 65, 46, 0.22);
+            transition:
+                transform 160ms ease,
+                box-shadow 160ms ease,
+                filter 160ms ease;
         }
-        .cell:hover {
-            background-color: rgba(255, 255, 255, 0.12); 
+
+        #start-screen button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 16px 30px rgba(50, 65, 46, 0.3);
+            filter: brightness(1.05);
         }
-        #board.locked .cell {
-            cursor: not-allowed;
+
+        #game-container {
+            display: none;
+            width: min(1120px, 100%);
+            flex-direction: column;
+            gap: 18px;
+            animation: fadeIn 420ms ease forwards;
         }
-        #board.locked .cell:hover {
-            background-color: transparent;
+
+        .game-brand {
+            display: flex;
+            align-items: end;
+            justify-content: space-between;
+            gap: 20px;
         }
-        .cell.occupied {
-            cursor: default;
+
+        .game-brand h1 {
+            margin: 0;
+            color: var(--paper);
+            font-family: Georgia, "Times New Roman", serif;
+            font-size: clamp(2.1rem, 5vw, 4.2rem);
+            line-height: 0.95;
+            letter-spacing: 0;
         }
+
+        .game-brand span,
+        .panel-title {
+            color: #d8cdbb;
+            font-size: 0.78rem;
+            font-weight: 800;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+        }
+
+        .game-layout {
+            display: grid;
+            grid-template-columns: minmax(420px, var(--board-size)) minmax(280px, 340px);
+            grid-template-areas: "board panel";
+            align-items: start;
+            justify-content: center;
+            gap: clamp(22px, 4vw, 44px);
+        }
+
+        .match-panel {
+            grid-area: panel;
+            width: 100%;
+            min-width: 0;
+            color: var(--ink);
+        }
+
+        .panel-title {
+            margin: 0 0 12px;
+        }
+
+        table.header {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        table.header tbody {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-areas:
+                "p1label p2label"
+                "p1name p2name"
+                "status status";
+        }
+
+        table.header tr {
+            display: contents;
+        }
+
+        table.header th,
+        table.header td {
+            min-width: 0;
+            text-align: left;
+        }
+
+        table.header th {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            min-height: 48px;
+            padding: 13px 14px 5px;
+            color: var(--muted);
+            font-size: 0.68rem;
+            font-weight: 900;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            background: var(--paper);
+            border-top: 1px solid rgba(183, 138, 49, 0.28);
+        }
+
+        table.header td {
+            min-height: 64px;
+            padding: 0 14px 16px;
+            overflow: hidden;
+            color: var(--ink);
+            font-size: clamp(0.98rem, 2vw, 1.1rem);
+            font-weight: 800;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            background: var(--paper);
+            border-bottom: 1px solid rgba(183, 138, 49, 0.28);
+        }
+
+        #p1_label {
+            grid-area: p1label;
+            border-left: 1px solid rgba(183, 138, 49, 0.28);
+            border-top-left-radius: 8px;
+        }
+
+        #p2_label {
+            grid-area: p2label;
+            border-right: 1px solid rgba(183, 138, 49, 0.28);
+            border-top-right-radius: 8px;
+        }
+
+        #p1_name {
+            grid-area: p1name;
+            border-left: 1px solid rgba(183, 138, 49, 0.28);
+        }
+
+        #p2_name {
+            grid-area: p2name;
+            border-right: 1px solid rgba(183, 138, 49, 0.28);
+        }
+
+        #p1_label,
+        #p1_name {
+            border-right: 1px solid rgba(183, 138, 49, 0.18);
+        }
+
+        #p1_label::before,
+        #p2_label::before {
+            content: "";
+            width: 16px;
+            height: 16px;
+            flex: 0 0 16px;
+            border-radius: 50%;
+            box-shadow: inset 0 0 0 1px rgba(23, 25, 22, 0.24);
+        }
+
+        #p1_label::before {
+            background:
+                radial-gradient(circle at 35% 30%, #3b3a30 0 8%, transparent 24%),
+                #11110f;
+        }
+
+        #p2_label::before {
+            background:
+                radial-gradient(circle at 35% 30%, #ffffff 0 12%, transparent 30%),
+                #eee8d8;
+        }
+
+        .status-row {
+            grid-area: status;
+            display: flex;
+            align-items: center;
+            min-height: 88px;
+            margin-top: 14px;
+            padding: 18px !important;
+            color: var(--paper);
+            font-size: clamp(1rem, 2vw, 1.18rem) !important;
+            font-weight: 850;
+            line-height: 1.25;
+            white-space: normal;
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent),
+                var(--green-dark);
+            border: 1px solid rgba(255, 250, 240, 0.12);
+            border-radius: 8px;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.24);
+        }
+
         #identity {
-            min-height: 24px;
-            margin: -14px 0 20px;
-            color: #cbd5e1;
-            font-size: 0.9rem;
+            min-height: 48px;
+            margin-top: 14px;
+            padding: 13px 16px;
+            color: #efe8d8;
+            font-size: 0.95rem;
+            line-height: 1.35;
+            background: rgba(255, 250, 240, 0.08);
+            border: 1px solid rgba(255, 250, 240, 0.12);
+            border-radius: 8px;
         }
+
         #identity strong {
             color: #ffffff;
         }
+
         .status-error {
-            color: #fca5a5 !important;
+            color: #fff6ee !important;
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.1), transparent),
+                var(--danger) !important;
         }
+
         .status-success {
-            color: #86efac !important;
+            color: #fffdf8 !important;
+            background:
+                linear-gradient(180deg, rgba(255, 255, 255, 0.1), transparent),
+                var(--success) !important;
         }
-        .stone { 
-            width: 39px; 
-            height: 39px; 
-            border-radius: 50%; 
-            filter: drop-shadow(3px 5px 5px rgba(0, 0, 0, 0.45));
-            animation: dropStone 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+
+        #board {
+            grid-area: board;
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            grid-template-rows: repeat(10, 1fr);
+            width: var(--board-size);
+            min-width: 420px;
+            max-width: 620px;
+            aspect-ratio: 1;
+            overflow: hidden;
+            border: 10px solid #7c5520;
+            border-radius: 8px;
+            background:
+                linear-gradient(90deg, transparent calc(100% - 1px), var(--board-line) 0),
+                linear-gradient(180deg, transparent calc(100% - 1px), var(--board-line) 0),
+                linear-gradient(105deg, rgba(116, 73, 22, 0.16), transparent 18% 82%, rgba(255, 238, 166, 0.18)),
+                repeating-linear-gradient(
+                    12deg,
+                    rgba(255, 255, 255, 0.055) 0,
+                    rgba(255, 255, 255, 0.055) 9px,
+                    rgba(109, 67, 18, 0.045) 10px,
+                    rgba(109, 67, 18, 0.045) 18px
+                ),
+                var(--board-base);
+            background-size:
+                10% 100%,
+                100% 10%,
+                auto,
+                auto,
+                auto;
+            box-shadow:
+                0 30px 80px rgba(0, 0, 0, 0.44),
+                inset 0 0 0 1px rgba(255, 240, 185, 0.36),
+                inset 0 0 34px rgba(74, 44, 12, 0.18);
         }
-        .black { background-image: url('blackStone.gif'); background-size: cover; }
-        .white { background-image: url('whiteStone.gif'); background-size: cover; }
+
+        .cell {
+            position: relative;
+            width: auto;
+            height: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: 0;
+            transition:
+                background-color 140ms ease,
+                box-shadow 140ms ease;
+        }
+
+        .cell::after {
+            content: "";
+            position: absolute;
+            width: 34%;
+            height: 34%;
+            border-radius: 50%;
+            background: rgba(255, 250, 240, 0);
+            transform: scale(0.7);
+            transition:
+                background 140ms ease,
+                transform 140ms ease,
+                box-shadow 140ms ease;
+            pointer-events: none;
+        }
+
+        #board:not(.locked) .cell:not(.occupied):hover {
+            background-color: rgba(255, 250, 240, 0.1);
+            box-shadow: inset 0 0 0 2px rgba(255, 250, 240, 0.2);
+        }
+
+        #board:not(.locked) .cell:not(.occupied):hover::after {
+            background: rgba(255, 250, 240, 0.32);
+            box-shadow: 0 0 0 1px rgba(55, 38, 15, 0.22);
+            transform: scale(1);
+        }
+
+        #board.locked .cell {
+            cursor: not-allowed;
+        }
+
+        #board.locked .cell:hover {
+            background-color: transparent;
+        }
+
+        .cell.occupied {
+            cursor: default;
+        }
+
+        .cell.occupied::after {
+            display: none;
+        }
+
+        .stone {
+            width: min(82%, 40px);
+            height: min(82%, 40px);
+            z-index: 1;
+            border-radius: 50%;
+            background-position: center;
+            background-size: cover;
+            filter: drop-shadow(3px 6px 5px rgba(48, 29, 9, 0.42));
+            animation: dropStone 220ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .black {
+            background-image: url('blackStone.gif');
+        }
+
+        .white {
+            background-image: url('whiteStone.gif');
+        }
+
         @keyframes dropStone {
-            0% { transform: scale(1.4); opacity: 0; }
-            100% { transform: scale(1); opacity: 1; }
+            0% {
+                transform: scale(1.18);
+                opacity: 0;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
         }
+
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(15px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
-        @media (max-width: 540px) {
+
+        @media (max-width: 980px) {
             body {
-                justify-content: flex-start;
-                padding: 24px 12px;
-                box-sizing: border-box;
+                align-items: stretch;
+                padding: 24px;
             }
-            #start-screen {
-                width: min(320px, calc(100vw - 48px));
-                padding: 38px 24px;
+
+            #game-container {
+                width: 100%;
             }
-            table.header {
-                width: min(450px, calc(100vw - 32px));
+
+            .game-layout {
+                grid-template-columns: minmax(390px, 1fr) minmax(250px, 300px);
+                gap: 24px;
             }
+
             #board {
-                grid-template-columns: repeat(10, 1fr);
-                grid-template-rows: repeat(10, 1fr);
-                width: min(450px, calc(100vw - 32px));
-                height: min(450px, calc(100vw - 32px));
+                width: min(58vw, 560px);
+                min-width: 390px;
             }
-            .cell {
-                width: auto;
-                height: auto;
+        }
+
+        @media (max-width: 760px) {
+            body {
+                align-items: center;
+                padding: 18px;
             }
-            .stone {
-                width: 86%;
-                height: 86%;
+
+            .game-brand {
+                align-items: start;
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .game-layout {
+                grid-template-columns: 1fr;
+                grid-template-areas:
+                    "panel"
+                    "board";
+            }
+
+            .panel-title {
+                display: none;
+            }
+
+            #board {
+                width: min(92vw, 560px);
+                min-width: 0;
+                justify-self: center;
+                border-width: 8px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 12px;
+            }
+
+            #start-screen {
+                min-height: auto;
+                padding: 26px 20px;
+            }
+
+            .game-brand h1 {
+                font-size: 2.35rem;
+            }
+
+            table.header tbody {
+                grid-template-columns: 1fr;
+                grid-template-areas:
+                    "p1label"
+                    "p1name"
+                    "p2label"
+                    "p2name"
+                    "status";
+            }
+
+            #p1_label,
+            #p2_label,
+            #p1_name,
+            #p2_name {
+                border-left: 1px solid rgba(183, 138, 49, 0.28);
+                border-right: 1px solid rgba(183, 138, 49, 0.28);
+            }
+
+            #p1_label {
+                border-top-right-radius: 8px;
+            }
+
+            #p2_label {
+                border-top: 0;
+                border-radius: 0;
+            }
+
+            #p1_name,
+            #p2_name {
+                min-height: 48px;
+            }
+
+            #p1_name {
+                border-bottom: 0;
+            }
+
+            .status-row {
+                min-height: 70px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.001ms !important;
+                animation-iteration-count: 1 !important;
+                scroll-behavior: auto !important;
+                transition-duration: 0.001ms !important;
             }
         }
     </style>
@@ -222,25 +621,34 @@
     <div id="start-screen">
         <h2>GoMoKu</h2>
         <input type="text" id="player-name" placeholder="Enter Your Name" value="" />
-        <button onclick="startGame()">Enter Arena</button>
+        <button onclick="startGame()">Join Match</button>
     </div>
 
     <div id="game-container">
-        <table class="header">
-            <tr>
-                <th id="p1_label">Player 1 (Black)</th>
-                <th id="p2_label">Player 2 (White)</th>
-            </tr>
-            <tr>
-                <td id="p1_name">Waiting...</td>
-                <td id="p2_name">Waiting...</td>
-            </tr>
-            <tr>
-                <td colspan="2" id="status" class="status-row">Connecting to server...</td>
-            </tr>
-        </table>
-        <div id="identity"></div>
-        <div id="board" class="locked"></div>
+        <div class="game-brand" aria-hidden="true">
+            <h1>GoMoKu</h1>
+            <span>Connect-5 Tournament Board</span>
+        </div>
+        <div class="game-layout">
+            <div id="board" class="locked"></div>
+            <aside class="match-panel" aria-label="Match information">
+                <p class="panel-title">Match table</p>
+                <table class="header">
+                    <tr>
+                        <th id="p1_label">Player 1 (Black)</th>
+                        <th id="p2_label">Player 2 (White)</th>
+                    </tr>
+                    <tr>
+                        <td id="p1_name">Waiting...</td>
+                        <td id="p2_name">Waiting...</td>
+                    </tr>
+                    <tr>
+                        <td colspan="2" id="status" class="status-row">Connecting to server...</td>
+                    </tr>
+                </table>
+                <div id="identity"></div>
+            </aside>
+        </div>
     </div>
 
     <script>
