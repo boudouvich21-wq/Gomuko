@@ -2,21 +2,16 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install websockets library and curl for healthcheck
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
-RUN pip install --no-cache-dir websockets
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy all project files
-COPY server.py .
-COPY index.html .
-COPY background.gif .
-COPY blackStone.gif .
-COPY whiteStone.gif .
+COPY server.py index.html ./
+COPY background.gif blackStone.gif whiteStone.gif ./
 
-# Expose ports
+ENV PORT=8080
 EXPOSE 8080
-EXPOSE 8081
 
-# Start the server (HTTP on PORT=8080, WebSocket on PORT+1=8081)
-CMD python3 server.py
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3)"
 
+CMD ["python", "server.py"]

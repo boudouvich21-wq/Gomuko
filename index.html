@@ -146,6 +146,30 @@
         .cell:hover {
             background-color: rgba(255, 255, 255, 0.12); 
         }
+        #board.locked .cell {
+            cursor: not-allowed;
+        }
+        #board.locked .cell:hover {
+            background-color: transparent;
+        }
+        .cell.occupied {
+            cursor: default;
+        }
+        #identity {
+            min-height: 24px;
+            margin: -14px 0 20px;
+            color: #cbd5e1;
+            font-size: 0.9rem;
+        }
+        #identity strong {
+            color: #ffffff;
+        }
+        .status-error {
+            color: #fca5a5 !important;
+        }
+        .status-success {
+            color: #86efac !important;
+        }
         .stone { 
             width: 39px; 
             height: 39px; 
@@ -162,6 +186,34 @@
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(15px); }
             to { opacity: 1; transform: translateY(0); }
+        }
+        @media (max-width: 540px) {
+            body {
+                justify-content: flex-start;
+                padding: 24px 12px;
+                box-sizing: border-box;
+            }
+            #start-screen {
+                width: min(320px, calc(100vw - 48px));
+                padding: 38px 24px;
+            }
+            table.header {
+                width: min(450px, calc(100vw - 32px));
+            }
+            #board {
+                grid-template-columns: repeat(10, 1fr);
+                grid-template-rows: repeat(10, 1fr);
+                width: min(450px, calc(100vw - 32px));
+                height: min(450px, calc(100vw - 32px));
+            }
+            .cell {
+                width: auto;
+                height: auto;
+            }
+            .stone {
+                width: 86%;
+                height: 86%;
+            }
         }
     </style>
 </head>
@@ -187,7 +239,8 @@
                 <td colspan="2" id="status" class="status-row">Connecting to server...</td>
             </tr>
         </table>
-        <div id="board"></div>
+        <div id="identity"></div>
+        <div id="board" class="locked"></div>
     </div>
 
     <script>
@@ -195,8 +248,12 @@
         const statusDiv = document.getElementById('status');
         const p1NameDiv = document.getElementById('p1_name');
         const p2NameDiv = document.getElementById('p2_name');
+        const identityDiv = document.getElementById('identity');
         let myColor = null;
         let ws = null;
+        let currentTurn = null;
+        let gameStatus = 'idle';
+        let boardState = Array.from({ length: 10 }, () => Array(10).fill(0));
 
         for (let r = 0; r < 10; r++) {
             for (let c = 0; c < 10; c++) {
@@ -204,7 +261,7 @@
                 cell.className = 'cell';
                 cell.dataset.row = r;
                 cell.dataset.col = c;
-                cell.onclick = () => makeMove(parseInt(r), parseInt(c));
+                cell.onclick = () => makeMove(r, c);
                 boardDiv.appendChild(cell);
             }
         }
@@ -219,80 +276,134 @@
             document.getElementById('start-screen').style.display = 'none';
             document.getElementById('game-container').style.display = 'flex';
 
-            // IMPORTANT: WebSocket connects to PORT+1 of the HTTP page
-            const host = window.location.hostname;
-            const httpPort = window.location.port || "8080";
-            const wsPort = parseInt(httpPort) + 1;
-            const wsUrl = `ws://${host}:${wsPort}`;
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
             
             console.log("Connecting WebSocket to:", wsUrl);
             statusDiv.innerText = "Connecting to game server...";
+            setStatusStyle();
             
             ws = new WebSocket(wsUrl);
 
             ws.onopen = function() {
                 console.log("Connected!");
-                statusDiv.innerText = "Connected! Sending join request...";
+                statusDiv.innerText = "Connected. Joining matchmaking...";
                 ws.send(JSON.stringify({ type: 'join', name: nameInput }));
             };
 
             ws.onmessage = function(event) {
-                const data = JSON.parse(event.data);
+                let data;
+                try {
+                    data = JSON.parse(event.data);
+                } catch (error) {
+                    showConnectionError("The server sent an invalid response.");
+                    return;
+                }
                 console.log("Received:", data.type);
                 
-                if (data.type === 'init' || data.type === 'start') {
-                    myColor = data.color;
-                    p1NameDiv.innerText = data.names.black || "Waiting...";
-                    p2NameDiv.innerText = data.names.white || "Waiting...";
-                    statusDiv.innerText = data.msg;
-                    
-                    if (myColor === 'black') {
-                        document.getElementById('p1_label').style.color = 'blue';
-                        document.getElementById('p1_label').style.fontWeight = 'bold';
-                        p1NameDiv.style.fontWeight = 'bold';
-                    } else {
-                        document.getElementById('p2_label').style.color = 'blue';
-                        document.getElementById('p2_label').style.fontWeight = 'bold';
-                        p2NameDiv.style.fontWeight = 'bold';
-                    }
-                } 
-                else if (data.type === 'update_board' || data.type === 'win') {
-                    renderBoard(data.board);
-                    statusDiv.innerText = data.msg;
-                }
-                else if (data.type === 'error') {
-                    alert(data.msg);
-                    if (data.msg.includes("disconnected")) {
-                        location.reload(); 
-                    }
+                if (['waiting', 'start', 'state', 'error', 'game_over'].includes(data.type)) {
+                    applyServerState(data);
                 }
             };
 
-            ws.onerror = function(err) {
-                console.error("WebSocket error:", err);
-                statusDiv.innerText = "Connection failed! Check if server is running.";
-                alert("Could not connect to game server.\n\nMake sure the server is running and port " + wsPort + " is accessible.");
+            ws.onerror = function(error) {
+                console.error("WebSocket error:", error);
+                showConnectionError("Could not connect to the game server.");
             };
             
             ws.onclose = function() {
                 console.log("WebSocket closed");
-                if (statusDiv.innerText === "Connecting to game server...") {
-                    statusDiv.innerText = "Connection closed (server might be down)";
+                boardDiv.classList.add('locked');
+                if (!['finished', 'abandoned'].includes(gameStatus)) {
+                    showConnectionError("Connection closed. Refresh the page to reconnect.");
                 }
             };
         }
 
         function makeMove(r, c) {
-            if (!myColor || !ws || ws.readyState !== WebSocket.OPEN) return;
+            if (
+                !myColor ||
+                !ws ||
+                ws.readyState !== WebSocket.OPEN ||
+                gameStatus !== 'active' ||
+                currentTurn !== myColor ||
+                boardState[r][c] !== 0
+            ) {
+                return;
+            }
+            boardDiv.classList.add('locked');
             ws.send(JSON.stringify({ type: 'move', row: r, col: c }));
+        }
+
+        function applyServerState(data) {
+            if (data.names) {
+                p1NameDiv.innerText = data.names.black || "Waiting...";
+                p2NameDiv.innerText = data.names.white || "Waiting...";
+            }
+
+            if (data.your_color) {
+                myColor = data.your_color;
+            }
+
+            if (Array.isArray(data.board)) {
+                boardState = data.board;
+                renderBoard(boardState);
+            }
+
+            currentTurn = data.turn;
+            gameStatus = data.status || gameStatus;
+            statusDiv.innerText = data.message || "Game state updated.";
+            setStatusStyle(data.type);
+            updateIdentity();
+            updateBoardLock();
+        }
+
+        function updateIdentity() {
+            if (!myColor) {
+                identityDiv.innerHTML = "";
+                return;
+            }
+            const stoneName = myColor.charAt(0).toUpperCase() + myColor.slice(1);
+            const turnText =
+                gameStatus === 'active'
+                    ? currentTurn === myColor
+                        ? "Your move"
+                        : "Opponent's move"
+                    : gameStatus === 'waiting'
+                        ? "Waiting for an opponent"
+                        : "Game complete";
+            identityDiv.innerHTML = `You are <strong>${stoneName}</strong> · ${turnText}`;
+        }
+
+        function updateBoardLock() {
+            const canMove =
+                gameStatus === 'active' &&
+                currentTurn === myColor &&
+                ws &&
+                ws.readyState === WebSocket.OPEN;
+            boardDiv.classList.toggle('locked', !canMove);
+        }
+
+        function setStatusStyle(messageType = '') {
+            statusDiv.classList.toggle('status-error', messageType === 'error');
+            statusDiv.classList.toggle('status-success', messageType === 'game_over');
+        }
+
+        function showConnectionError(message) {
+            gameStatus = 'connection_error';
+            statusDiv.innerText = message;
+            setStatusStyle('error');
+            updateIdentity();
+            boardDiv.classList.add('locked');
         }
 
         function renderBoard(boardData) {
             const cells = document.querySelectorAll('.cell');
             cells.forEach(cell => {
-                const r = cell.dataset.row;
-                const c = cell.dataset.col;
+                const r = Number(cell.dataset.row);
+                const c = Number(cell.dataset.col);
                 cell.innerHTML = ''; 
+                cell.classList.toggle('occupied', boardData[r][c] !== 0);
                 if (boardData[r][c] === 1) {
                     cell.innerHTML = '<div class="stone black"></div>';
                 } else if (boardData[r][c] === 2) {
