@@ -18,7 +18,7 @@ def empty_board():
     return [[0 for _ in range(BOARD_SIZE)] for _ in range(BOARD_SIZE)]
 
 
-def check_win(board, player_value):
+def find_winning_cells(board, player_value):
     directions = ((0, 1), (1, 0), (1, 1), (1, -1))
     for row in range(BOARD_SIZE):
         for col in range(BOARD_SIZE):
@@ -34,8 +34,18 @@ def check_win(board, player_value):
                     == player_value
                     for offset in range(5)
                 ):
-                    return True
-    return False
+                    return [
+                        {
+                            "row": row + offset * row_step,
+                            "col": col + offset * col_step,
+                        }
+                        for offset in range(5)
+                    ]
+    return []
+
+
+def check_win(board, player_value):
+    return bool(find_winning_cells(board, player_value))
 
 
 def board_is_full(board):
@@ -58,6 +68,9 @@ class Game:
     turn: str = "black"
     status: str = "active"
     result: str | None = None
+    last_move: dict[str, int] | None = None
+    winning_cells: list[dict[str, int]] = field(default_factory=list)
+    rematch_requests: set[str] = field(default_factory=set)
 
 
 class GameServer:
@@ -79,6 +92,8 @@ class GameServer:
             "turn": game.turn if game.status == "active" else None,
             "status": game.status,
             "result": game.result,
+            "last_move": game.last_move,
+            "winning_cells": game.winning_cells,
             "message": message,
         }
 
@@ -131,6 +146,8 @@ class GameServer:
                         "turn": None,
                         "status": "waiting",
                         "result": None,
+                        "last_move": None,
+                        "winning_cells": [],
                         "your_color": "black",
                         "message": "Waiting for a second player...",
                     },
@@ -168,6 +185,8 @@ class GameServer:
                 "turn": None,
                 "status": "waiting",
                 "result": None,
+                "last_move": None,
+                "winning_cells": [],
                 "your_color": player.color,
                 "message": message,
             }
@@ -205,16 +224,18 @@ class GameServer:
 
         player_value = 1 if player.color == "black" else 2
         game.board[row][col] = player_value
+        game.last_move = {"row": row, "col": col}
 
-        if check_win(game.board, player_value):
+        winning_cells = find_winning_cells(game.board, player_value)
+        if winning_cells:
             game.status = "finished"
             game.result = f"{player.name} wins"
+            game.winning_cells = winning_cells
             await self._broadcast_state(
                 game,
                 f"{player.name} wins with five stones in a row!",
                 "game_over",
             )
-            self.games.pop(game.game_id, None)
             return
 
         if board_is_full(game.board):
@@ -225,7 +246,6 @@ class GameServer:
                 "The board is full. The game is a draw.",
                 "game_over",
             )
-            self.games.pop(game.game_id, None)
             return
 
         game.turn = "white" if game.turn == "black" else "black"
@@ -235,18 +255,47 @@ class GameServer:
             f"{next_player.name}'s turn ({game.turn.title()}).",
         )
 
+    async def request_rematch(self, player):
+        game = self.games.get(player.game_id)
+        if not game or game.status != "finished":
+            await self.send_error(player, "A rematch is only available after a finished game.")
+            return
+
+        game.rematch_requests.add(player.color)
+        if len(game.rematch_requests) < 2:
+            await self._broadcast_state(
+                game,
+                f"{player.name} requested a rematch.",
+                "rematch_pending",
+            )
+            return
+
+        game.board = empty_board()
+        game.turn = "black"
+        game.status = "active"
+        game.result = None
+        game.last_move = None
+        game.winning_cells = []
+        game.rematch_requests.clear()
+        await self._broadcast_state(
+            game,
+            f"Rematch started. {game.players['black'].name} (Black) moves first.",
+            "start",
+        )
+
     async def disconnect(self, player):
         async with self.matchmaking_lock:
             self._remove_waiting_player(player)
 
         game = self.games.pop(player.game_id, None)
-        if not game or game.status != "active":
+        if not game:
             return
 
-        game.status = "abandoned"
-        game.result = f"{player.name} disconnected"
         opponent_color = "white" if player.color == "black" else "black"
         opponent = game.players.get(opponent_color)
+        if game.status in {"active", "finished"}:
+            game.status = "abandoned"
+            game.result = f"{player.name} disconnected"
         if opponent and not opponent.websocket.closed:
             payload = self._state_payload(
                 game,
@@ -263,7 +312,12 @@ async def index(_request):
 
 async def static_asset(request):
     filename = request.match_info["filename"]
-    if filename not in {"background.gif", "blackStone.gif", "whiteStone.gif"}:
+    if filename not in {
+        "background.gif",
+        "blackStone.gif",
+        "whiteStone.gif",
+        "game.js",
+    }:
         raise web.HTTPNotFound()
     return web.FileResponse(ROOT / filename)
 
@@ -324,10 +378,15 @@ async def websocket_handler(request):
                     await game_server.send_error(player, "Messages must be valid JSON.")
                     continue
 
-                if data.get("type") != "move":
+                message_type = data.get("type")
+                if message_type == "move":
+                    await game_server.move(player, data)
+                elif message_type == "rematch_request":
+                    await game_server.request_rematch(player)
+                elif message_type == "leave":
+                    break
+                else:
                     await game_server.send_error(player, "Unsupported message type.")
-                    continue
-                await game_server.move(player, data)
             elif message.type == WSMsgType.ERROR:
                 break
     finally:

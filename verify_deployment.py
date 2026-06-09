@@ -39,8 +39,14 @@ async def verify(base_url):
         async with session.get(base_url, timeout=timeout) as response:
             response.raise_for_status()
             page = await response.text()
-            if "GoMoKu" not in page or "/ws" not in page:
+            if "GoMoKu" not in page or 'src="/game.js"' not in page:
                 raise RuntimeError("The deployed page is not the repaired GoMoKu client.")
+
+        async with session.get(f"{base_url}/game.js", timeout=timeout) as response:
+            response.raise_for_status()
+            client_script = await response.text()
+            if "/ws" not in client_script or "rematch_request" not in client_script:
+                raise RuntimeError("The deployed GoMoKu client script is incomplete.")
             print("[PASS] Browser client")
 
         ws_url = websocket_url(base_url)

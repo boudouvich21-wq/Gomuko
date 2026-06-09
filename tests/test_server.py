@@ -3,7 +3,14 @@ import unittest
 
 from aiohttp import ClientSession, WSMsgType, web
 
-from server import BOARD_SIZE, GAME_SERVER_KEY, board_is_full, check_win, create_app
+from server import (
+    BOARD_SIZE,
+    GAME_SERVER_KEY,
+    board_is_full,
+    check_win,
+    create_app,
+    find_winning_cells,
+)
 
 
 class BoardRulesTests(unittest.TestCase):
@@ -14,21 +21,37 @@ class BoardRulesTests(unittest.TestCase):
         for col in range(5):
             self.board[4][col] = 1
         self.assertTrue(check_win(self.board, 1))
+        self.assertEqual(
+            find_winning_cells(self.board, 1),
+            [{"row": 4, "col": col} for col in range(5)],
+        )
 
     def test_vertical_win(self):
         for row in range(5):
             self.board[row][7] = 2
         self.assertTrue(check_win(self.board, 2))
+        self.assertEqual(
+            find_winning_cells(self.board, 2),
+            [{"row": row, "col": 7} for row in range(5)],
+        )
 
     def test_downward_diagonal_win(self):
         for offset in range(5):
             self.board[2 + offset][3 + offset] = 1
         self.assertTrue(check_win(self.board, 1))
+        self.assertEqual(
+            find_winning_cells(self.board, 1),
+            [{"row": 2 + offset, "col": 3 + offset} for offset in range(5)],
+        )
 
     def test_upward_diagonal_win(self):
         for offset in range(5):
             self.board[1 + offset][8 - offset] = 2
         self.assertTrue(check_win(self.board, 2))
+        self.assertEqual(
+            find_winning_cells(self.board, 2),
+            [{"row": 1 + offset, "col": 8 - offset} for offset in range(5)],
+        )
 
     def test_full_board(self):
         board = [
@@ -90,6 +113,9 @@ class WebSocketIntegrationTests(unittest.IsolatedAsyncioTestCase):
         async with self.session.get(f"{self.base_url}/") as response:
             self.assertEqual(response.status, 200)
             self.assertIn("GoMoKu", await response.text())
+        async with self.session.get(f"{self.base_url}/game.js") as response:
+            self.assertEqual(response.status, 200)
+            self.assertIn("rematch_request", await response.text())
 
     async def test_two_players_share_moves_and_turns_are_enforced(self):
         black, white, _ = await self.start_game()
@@ -100,6 +126,7 @@ class WebSocketIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(black_state["board"][0][0], 1)
         self.assertEqual(white_state["board"][0][0], 1)
         self.assertEqual(black_state["turn"], "white")
+        self.assertEqual(black_state["last_move"], {"row": 0, "col": 0})
 
         await black.send_json({"type": "move", "row": 0, "col": 1})
         error = await self.receive_json(black)
@@ -132,7 +159,7 @@ class WebSocketIntegrationTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(second_black.closed)
         self.assertFalse(second_white.closed)
 
-    async def test_win_is_broadcast_and_game_is_cleaned_up(self):
+    async def test_win_is_broadcast_and_game_is_retained_for_rematch(self):
         black, white, start = await self.start_game()
         for col in range(4):
             await black.send_json({"type": "move", "row": 2, "col": col})
@@ -147,7 +174,35 @@ class WebSocketIntegrationTests(unittest.IsolatedAsyncioTestCase):
         white_end = await self.receive_json(white)
         self.assertEqual(black_end["type"], "game_over")
         self.assertEqual(white_end["result"], "Alice wins")
-        self.assertNotIn(start["game_id"], self.app[GAME_SERVER_KEY].games)
+        self.assertEqual(
+            black_end["winning_cells"],
+            [{"row": 2, "col": col} for col in range(5)],
+        )
+        self.assertIn(start["game_id"], self.app[GAME_SERVER_KEY].games)
+
+    async def test_rematch_requires_both_players_and_resets_the_game(self):
+        black, white, start = await self.start_game()
+        game = self.app[GAME_SERVER_KEY].games[start["game_id"]]
+        game.status = "finished"
+        game.result = "Alice wins"
+        game.board[2][:5] = [1, 1, 1, 1, 1]
+        game.winning_cells = [{"row": 2, "col": col} for col in range(5)]
+
+        await black.send_json({"type": "rematch_request"})
+        black_pending = await self.receive_json(black)
+        white_pending = await self.receive_json(white)
+        self.assertEqual(black_pending["type"], "rematch_pending")
+        self.assertEqual(white_pending["status"], "finished")
+
+        await white.send_json({"type": "rematch_request"})
+        black_start = await self.receive_json(black)
+        white_start = await self.receive_json(white)
+        self.assertEqual(black_start["type"], "start")
+        self.assertEqual(white_start["status"], "active")
+        self.assertEqual(black_start["turn"], "black")
+        self.assertIsNone(black_start["last_move"])
+        self.assertEqual(black_start["winning_cells"], [])
+        self.assertTrue(all(cell == 0 for row in black_start["board"] for cell in row))
 
     async def test_last_move_can_end_in_a_draw(self):
         black, white, start = await self.start_game()
@@ -164,7 +219,7 @@ class WebSocketIntegrationTests(unittest.IsolatedAsyncioTestCase):
         white_end = await self.receive_json(white)
         self.assertEqual(black_end["type"], "game_over")
         self.assertEqual(white_end["result"], "Draw")
-        self.assertNotIn(start["game_id"], self.app[GAME_SERVER_KEY].games)
+        self.assertIn(start["game_id"], self.app[GAME_SERVER_KEY].games)
 
     async def test_waiting_and_active_disconnects_are_cleaned_up(self):
         waiting = await self.connect_player("Waiting")
@@ -176,6 +231,18 @@ class WebSocketIntegrationTests(unittest.IsolatedAsyncioTestCase):
         black, white, start = await self.start_game("Stay", "Leave")
         await white.close()
         end = await self.receive_json(black)
+        self.assertEqual(end["type"], "game_over")
+        self.assertEqual(end["status"], "abandoned")
+        self.assertNotIn(start["game_id"], self.app[GAME_SERVER_KEY].games)
+
+    async def test_finished_game_disconnect_cancels_rematch(self):
+        black, white, start = await self.start_game("Winner", "Opponent")
+        game = self.app[GAME_SERVER_KEY].games[start["game_id"]]
+        game.status = "finished"
+        game.result = "Winner wins"
+
+        await black.close()
+        end = await self.receive_json(white)
         self.assertEqual(end["type"], "game_over")
         self.assertEqual(end["status"], "abandoned")
         self.assertNotIn(start["game_id"], self.app[GAME_SERVER_KEY].games)

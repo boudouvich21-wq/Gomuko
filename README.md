@@ -6,7 +6,7 @@ turns, move validation, board state, wins, draws, and disconnects.
 
 ## Architecture
 
-- **Client:** HTML, CSS, and JavaScript in `index.html`
+- **Client:** HTML/CSS in `index.html` with state and rendering logic in `game.js`
 - **Server:** Python and `aiohttp` in `server.py`
 - **Transport:** WebSocket at `/ws`
 - **HTTP:** page, GIF assets, and `/health` use the same public port
@@ -31,6 +31,17 @@ Run the automated tests:
 ```bash
 ./venv/bin/python -m unittest discover -s tests -v
 ```
+
+For a rendered two-player smoke test, start the app on port `8082`, launch
+Chrome with remote debugging on port `9222`, then run:
+
+```bash
+APP_URL=http://127.0.0.1:8082 node tests/browser_smoke.mjs
+```
+
+The smoke test verifies desktop and mobile layout, hover previews, centered
+stones, win highlighting, the winning line, result modals, rematch, and Leave.
+Screenshots are written to `/tmp/gomoku-browser-smoke`.
 
 After deploying, verify the public HTTP and WebSocket path with:
 
@@ -67,6 +78,8 @@ Client messages:
 ```json
 {"type": "join", "name": "Alice"}
 {"type": "move", "row": 4, "col": 5}
+{"type": "rematch_request"}
+{"type": "leave"}
 ```
 
 Server message types:
@@ -76,9 +89,10 @@ Server message types:
 - `state`: a valid move was accepted and broadcast.
 - `error`: a move or message was rejected without changing the board.
 - `game_over`: win, draw, or opponent disconnect.
+- `rematch_pending`: one player has requested a rematch.
 
 State messages include the board, player names, assigned color, current turn,
-game status, result, game ID, and a display message.
+game status, result, game ID, last move, winning cells, and a display message.
 
 ## Demo Checklist
 
