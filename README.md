@@ -4,6 +4,9 @@ A browser-based, real-time two-player GoMoKu game. The Python server supports
 multiple independent games concurrently and is authoritative for matchmaking,
 turns, move validation, board state, wins, draws, and disconnects.
 
+For the complete user guide, architecture, protocol reference, testing guide,
+and deployment documentation, see [`GAME_DOCUMENTATION.md`](GAME_DOCUMENTATION.md).
+
 ## Architecture
 
 - **Client:** HTML/CSS in `index.html` with state and rendering logic in `game.js`
@@ -106,6 +109,7 @@ game status, result, game ID, last move, winning cells, and a display message.
 
 ## Submission Files
 
+- `GAME_DOCUMENTATION.md`: complete game and technical documentation
 - `DESIGN_DOCUMENT.docx`: printable two-page design document
 - `DESIGN_DOCUMENT.md`: editable source copy of the design content
 - `PROGRAM_LISTING.docx`: print-ready full client and server source listing
